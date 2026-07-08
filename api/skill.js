@@ -2,6 +2,7 @@
 // 파일 위치: api/skill.js (이 경로 그대로 유지해야 https://프로젝트명.vercel.app/api/skill 로 접근됨)
 
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuQY8-cFFoPEjpgrmnFEfoHB3QoKWU0edb0MfSC2YiTSvzTYGN4OHeePZownqPZA/pub?gid=1809262675&single=true&output=csv";
+const STOCK_LIST_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuQY8-cFFoPEjpgrmnFEfoHB3QoKWU0edb0MfSC2YiTSvzTYGN4OHeePZownqPZA/pub?gid=170349826&single=true&output=csv";
 const LOG_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwdqXEol2vYXhxwraXnxqwiP-6nDqBATIcKVhXu7_Pwhwhc8hw4PkTABd0XxiNKLbBQWQ/exec";
 
 async function logQuery(userId, message, replySummary) {
@@ -69,6 +70,24 @@ async function loadModelDB() {
     }
   }
   return db;
+}
+
+async function buildStockListReply() {
+  const res = await fetch(STOCK_LIST_CSV_URL);
+  const text = await res.text();
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l !== "");
+
+  if (lines.length === 0) {
+    return "현재 등록된 재고 목록이 없어요.";
+  }
+
+  let output = "📋 현재 개통 가능한 재고 목록\n\n";
+  lines.forEach((name) => {
+    output += "・" + name + "\n";
+  });
+  output += "\n모델명 + 통신사 + 가입유형을 입력하시면 가격을 바로 알려드려요.\n예) S26 SKT 번호이동";
+
+  return output;
 }
 
 async function buildPriceReply(msg) {
@@ -149,9 +168,15 @@ export default async function handler(req, res) {
     const utterance = body?.userRequest?.utterance || "";
     const userId = body?.userRequest?.user?.id || "unknown";
 
-    let reply = await buildPriceReply(utterance);
-    if (!reply) {
-      reply = "모델명, 통신사, 가입유형을 순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
+    let reply;
+
+    if (utterance.trim() === "재고목록") {
+      reply = await buildStockListReply();
+    } else {
+      reply = await buildPriceReply(utterance);
+      if (!reply) {
+        reply = "재고목록을 입력하시면 현재 개통 가능한 재고 목록을 보실 수 있어요.\n\n가격 조회는 모델명, 통신사, 가입유형을 순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
+      }
     }
 
     // 첫 줄만 요약으로 로그에 남김 (스프레드시트 셀이 너무 길어지지 않게)
