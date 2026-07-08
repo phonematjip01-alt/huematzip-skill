@@ -2,6 +2,19 @@
 // 파일 위치: api/skill.js (이 경로 그대로 유지해야 https://프로젝트명.vercel.app/api/skill 로 접근됨)
 
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSuQY8-cFFoPEjpgrmnFEfoHB3QoKWU0edb0MfSC2YiTSvzTYGN4OHeePZownqPZA/pub?gid=1809262675&single=true&output=csv";
+const LOG_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwdqXEol2vYXhxwraXnxqwiP-6nDqBATIcKVhXu7_Pwhwhc8hw4PkTABd0XxiNKLbBQWQ/exec";
+
+async function logQuery(userId, message, replySummary) {
+  try {
+    await fetch(LOG_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, message, replySummary })
+    });
+  } catch (e) {
+    // 로그 기록 실패해도 챗봇 응답 자체엔 영향 없게 조용히 무시
+  }
+}
 
 const VALID_CARRIERS = ["SKT", "KT", "LGU+"];
 const VALID_TYPES = ["번호이동", "기기변경", "신규가입"];
@@ -134,11 +147,16 @@ export default async function handler(req, res) {
   try {
     const body = req.body;
     const utterance = body?.userRequest?.utterance || "";
+    const userId = body?.userRequest?.user?.id || "unknown";
 
     let reply = await buildPriceReply(utterance);
     if (!reply) {
       reply = "모델명, 통신사, 가입유형을 순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
     }
+
+    // 첫 줄만 요약으로 로그에 남김 (스프레드시트 셀이 너무 길어지지 않게)
+    const replySummary = reply.split("\n")[0];
+    await logQuery(userId, utterance, replySummary);
 
     res.status(200).json(kakaoResponse(reply));
   } catch (err) {
