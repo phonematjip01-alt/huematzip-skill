@@ -33,7 +33,7 @@ async function loadModelDB() {
   const lines = text.split("\n");
   const db = {};
 
-  for (let r = 1; r < lines.length; r++) {
+  for (let r = 1; r < lines.length; r++) { // 1행은 헤더라 스킵
     const line = lines[r].trim();
     if (!line) continue;
 
@@ -106,13 +106,13 @@ async function buildPriceReply(msg) {
   output += "[공시지원금 방식]\n";
   output += "출고가: " + 출고가.toLocaleString() + "원\n";
   output += "공시지원금: -" + info.공시지원금.toLocaleString() + "원\n";
-  output += "대리점 추가지원금: -" + 추가지원금.toLocaleString() + "원\n";
+  output += "매장특별지원금 적용\n";
   output += "─────────────\n";
   output += "실구매가: " + 공시가.toLocaleString() + "원\n\n";
   output += "[선택약정 방식]\n";
   output += "출고가: " + 출고가.toLocaleString() + "원\n";
   output += "선택약정 할인(" + 약정개월 + "개월): -" + 약정할인총액.toLocaleString() + "원\n";
-  output += "대리점 추가지원금: -" + 추가지원금.toLocaleString() + "원\n";
+  output += "매장특별지원금 적용\n";
   output += "─────────────\n";
   output += "실구매가: " + 약정가.toLocaleString() + "원\n\n";
   output += "문의: https://huematzip.store/";
@@ -129,6 +129,7 @@ function kakaoResponse(text) {
   };
 }
 
+// Vercel 서버리스 함수 진입점
 export default async function handler(req, res) {
   try {
     const body = req.body;
