@@ -159,11 +159,35 @@ async function buildPriceReply(msg) {
   return output;
 }
 
+const QUICK_REPLIES = [
+  { label: "재고목록", action: "message", messageText: "재고목록" },
+  { label: "인터넷", action: "message", messageText: "인터넷" },
+  { label: "렌탈", action: "message", messageText: "렌탈" },
+  { label: "매장", action: "message", messageText: "매장" },
+  { label: "공지", action: "message", messageText: "공지" },
+  { label: "상담예약", action: "message", messageText: "상담예약" }
+];
+
+async function logConsultation(userId, name, phone, desiredTime) {
+  try {
+    await fetch(LOG_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "consultation", userId, name, phone, desiredTime })
+    });
+  } catch (e) {
+    // 저장 실패해도 챗봇 응답 자체엔 영향 없게 조용히 무시
+  }
+}
+
+const CONSULT_GUIDE = "📞 상담 예약 신청\n\n아래 형식으로 한 번에 보내주세요.\n상담예약 이름,연락처,희망시간\n\n예) 상담예약 홍길동,01012345678,내일 오후2시";
+
 function kakaoResponse(text) {
   return {
     version: "2.0",
     template: {
-      outputs: [{ simpleText: { text } }]
+      outputs: [{ simpleText: { text } }],
+      quickReplies: QUICK_REPLIES
     }
   };
 }
@@ -182,10 +206,25 @@ export default async function handler(req, res) {
       reply = await buildStockListReply();
     } else if (STATIC_REPLIES[trimmed]) {
       reply = STATIC_REPLIES[trimmed];
+    } else if (trimmed === "상담예약") {
+      reply = CONSULT_GUIDE;
+    } else if (trimmed.startsWith("상담예약 ")) {
+      const details = trimmed.substring("상담예약 ".length).split(",");
+      if (details.length < 3 || !details[0].trim() || !details[1].trim() || !details[2].trim()) {
+        reply = "입력 형식이 올바르지 않아요.\n\n" + CONSULT_GUIDE;
+      } else {
+        const name = details[0].trim();
+        const phone = details[1].trim();
+        const desiredTime = details.slice(2).join(",").trim();
+
+        await logConsultation(userId, name, phone, desiredTime);
+
+        reply = "상담 예약 신청이 완료됐어요! 😊\n\n이름: " + name + "\n연락처: " + phone + "\n희망시간: " + desiredTime + "\n\n확인 후 빠르게 연락드릴게요.";
+      }
     } else {
       reply = await buildPriceReply(utterance);
       if (!reply) {
-        reply = "재고목록 / 인터넷 / 렌탈 / 매장 / 공지\n위 단어를 입력하시면 각각 안내해드려요.\n\n가격 조회는 모델명, 통신사, 가입유형을\n순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
+        reply = "재고목록 / 인터넷 / 렌탈 / 매장 / 공지 / 상담예약\n위 단어를 입력하시면 각각 안내해드려요.\n\n가격 조회는 모델명, 통신사, 가입유형을\n순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
       }
     }
 
