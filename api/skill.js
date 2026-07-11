@@ -72,6 +72,13 @@ async function loadModelDB() {
   return db;
 }
 
+const STATIC_REPLIES = {
+  "인터넷": "🌐 인터넷·TV 최대 지원금 확인\n\nKT/SKT/LG 인터넷+TV 결합 시\n최대 지원금을 계산해드려요.\n\n👉 https://huematzip.store/internet-calculator-kt\n\n문의: 1688-6476",
+  "렌탈": "🏠 가전렌탈 상품 안내\n\n정수기·TV·가전 렌탈을\n한곳에서 비교하고 혜택을 확인하세요.\n\n👉 https://huematzip.store/rental\n\n문의: 1688-6476",
+  "매장": "📍 가까운 매장 찾기\n\n주변 성지(매장) 위치와\n상담 연결을 도와드려요.\n\n👉 https://huematzip.store/seongji-check\n\n문의: 1688-6476",
+  "공지": "📢 공지사항\n\n최신 소식과 이벤트 안내는\n아래 링크에서 확인하실 수 있어요.\n\n👉 https://huematzip.store/tips"
+};
+
 async function buildStockListReply() {
   const res = await fetch(STOCK_LIST_CSV_URL);
   const text = await res.text();
@@ -169,13 +176,16 @@ export default async function handler(req, res) {
     const userId = body?.userRequest?.user?.id || "unknown";
 
     let reply;
+    const trimmed = utterance.trim();
 
-    if (utterance.trim() === "재고목록") {
+    if (trimmed === "재고목록") {
       reply = await buildStockListReply();
+    } else if (STATIC_REPLIES[trimmed]) {
+      reply = STATIC_REPLIES[trimmed];
     } else {
       reply = await buildPriceReply(utterance);
       if (!reply) {
-        reply = "재고목록을 입력하시면 현재 개통 가능한 재고 목록을 보실 수 있어요.\n\n가격 조회는 모델명, 통신사, 가입유형을 순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
+        reply = "재고목록 / 인터넷 / 렌탈 / 매장 / 공지\n위 단어를 입력하시면 각각 안내해드려요.\n\n가격 조회는 모델명, 통신사, 가입유형을\n순서 상관없이 입력해주세요.\n예) S26 SKT 번호이동";
       }
     }
 
