@@ -168,19 +168,19 @@ const QUICK_REPLIES = [
   { label: "상담예약", action: "message", messageText: "상담예약" }
 ];
 
-async function logConsultation(userId, name, phone, desiredTime) {
+async function logConsultation(userId, content) {
   try {
     await fetch(LOG_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "consultation", userId, name, phone, desiredTime })
+      body: JSON.stringify({ type: "consultation", userId, content })
     });
   } catch (e) {
     // 저장 실패해도 챗봇 응답 자체엔 영향 없게 조용히 무시
   }
 }
 
-const CONSULT_GUIDE = "📞 상담 예약 신청\n\n아래 형식으로 한 번에 보내주세요.\n상담예약 이름,연락처,희망시간\n\n예) 상담예약 홍길동,01012345678,내일 오후2시";
+const CONSULT_GUIDE = "📞 상담 예약 신청\n\n\"상담예약\" 뒤에 이름, 연락처, 희망시간 등\n원하시는 내용을 자유롭게 적어서 보내주세요.\n\n예) 상담예약 홍길동 010-1234-5678 내일 오후 2시쯤 방문 상담 원해요";
 
 function kakaoResponse(text) {
   return {
@@ -209,17 +209,13 @@ export default async function handler(req, res) {
     } else if (trimmed === "상담예약") {
       reply = CONSULT_GUIDE;
     } else if (trimmed.startsWith("상담예약 ")) {
-      const details = trimmed.substring("상담예약 ".length).split(",");
-      if (details.length < 3 || !details[0].trim() || !details[1].trim() || !details[2].trim()) {
-        reply = "입력 형식이 올바르지 않아요.\n\n" + CONSULT_GUIDE;
+      const content = trimmed.substring("상담예약 ".length).trim();
+
+      if (!content) {
+        reply = CONSULT_GUIDE;
       } else {
-        const name = details[0].trim();
-        const phone = details[1].trim();
-        const desiredTime = details.slice(2).join(",").trim();
-
-        await logConsultation(userId, name, phone, desiredTime);
-
-        reply = "상담 예약 신청이 완료됐어요! 😊\n\n이름: " + name + "\n연락처: " + phone + "\n희망시간: " + desiredTime + "\n\n확인 후 빠르게 연락드릴게요.";
+        await logConsultation(userId, content);
+        reply = "상담 예약 신청이 완료됐어요! 😊\n\n남겨주신 내용: " + content + "\n\n확인 후 빠르게 연락드릴게요.";
       }
     } else {
       reply = await buildPriceReply(utterance);
